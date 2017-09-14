@@ -8,7 +8,6 @@ function createApplication(name, description, user_id){
     user_id: user_id
   })
   .then(application => {
-    debugger;
     return application
   })
   .catch((error) => {
@@ -42,28 +41,7 @@ function createDomain(domainName, domainIsPublic, userId){
 // method to link a Application instance with x number of  domains 
 // Tobi think about Public vs private domains
 
-function linkApplicationsToDomains(application, domains){
-  let domainNames = [];
-  console.log("peachpuff", domainNames);
 
-  for (var i=0; i < domains.length; i++){
-    domainNames.push(domains[i].domainName)
-  } 
-
-  db.Domain.findAll({
-    where:{
-      name: {
-        $in: domainNames
-      }
-    }
-  })
-  .then((domains) => {
-    application.setDomains(domains).then((ApplicationDomains) => {
-    })
-  })
-  .catch(console.error)
-
-}
 
 function getLinkedDomains(application){
   application.getDomains()
@@ -101,7 +79,144 @@ function loadDomains(){
   .catch(console.error)
 }
 
+async function linkApplicationsToDomains(application, application_id, domains){
+  let domainNames = [];
+
+  for (var i=0; i < domains.length; i++){
+    domainNames.push(domains[i].domainName)
+  } 
+
+  try {
+    let domains = await db.Domain.findAll({where:{name: {$in: domainNames}}})
+    await application.setDomains(domains)
+    return findAssociatedDomains(application_id)
+  }
+
+  catch(err){
+    return  {
+      err,
+      message: 'Could not link Domains with Applications'
+    }
+  }
+}
+
+/////////////////////////////////////////////////
+/////////////////////////////////////////////////
+/////////////////////////////////////////////////
+/////////////////////////////////////////////////
+/////////////////////////////////////////////////
+/////////////////////////////////////////////////
+
+async function findAssociatedDomains(application_id){
+  var domain_ids;
+  var domains;
+  var foundDomains;
+  var application; 
+
+  try {
+    let foundApplicationDomains = await db.ApplicationDomains.findAll({
+      where: {
+        application_id: application_id
+      }
+    })
+    domain_ids = createListOfDomainIds(foundApplicationDomains)
+    foundDomains = await findDomainsById(domain_ids)
+    domains = createPrettyListOfDomains(foundDomains)
+    application = await updateApplicationObj(application_id, domains);
+
+    return application
+  }
+
+  catch(err){
+    return {
+      err,
+      'message': 'Could not find associated Domains for this Application'
+    }
+  }
+}
+
+function createListOfDomainIds(applicationDomains){
+  var domain_ids = []
+  for(var element of applicationDomains){
+    domain_ids.push(element.dataValues.domain_id)
+  }
+  return domain_ids
+}
 
 
-module.exports = { createApplication, createDomain, getLinkedDomains, linkApplicationsToDomains, findLinkedDomains, loadDomains };
+async function findDomainsByName(domainInfo){
+  var domainNames = [];
+  for (var i=0; i < domainInfo.length; i++){
+    domainNames.push(domainInfo[i].domainName)
+  } 
+  try {
+    var domains = await db.Domain.findAll({
+      where:{
+        name: {
+          $in: domainNames
+        }
+      }
+    })
+    return domains
+  }
+
+  catch(err){
+    return {
+      err,
+      'message': 'Could not find Domains with the input Domain names'
+    }
+  }
+}
+
+async function findDomainsById(domain_ids){
+
+  try {
+    var domains = await db.Domain.findAll({
+      where: {
+        domain_id : {
+          $in: domain_ids
+        }
+      }
+    });
+
+    return domains
+  }
+  catch(err){
+    return {
+      err,
+      'message': 'Could not find Domains with the input Domain IDs' 
+    }
+  }
+ } 
+
+
+function createPrettyListOfDomains(domainObjs){
+  var listOfDomains = [];
+
+  for(var domain of domainObjs){
+    listOfDomains.push(domain.dataValues)
+  }
+  return listOfDomains;
+}
+
+async function updateApplicationObj(application_id, domains){
+
+  try {
+      var foundApplication = await db.Application.findById(application_id);
+      foundApplication['associatedDomains'] = domains;
+
+    return foundApplication
+  }
+
+  catch (err){
+    return {
+      err,
+      'message': 'Could not update the input Application object with the input Domain objects'
+    }
+  }
+
+} 
+
+
+module.exports = { findAssociatedDomains, linkApplicationsToDomains, createApplication, createDomain, getLinkedDomains, findLinkedDomains, loadDomains };
 

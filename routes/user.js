@@ -50,6 +50,7 @@ router.post('/', function(req,res){
 router.patch('/:user_id', (req, res) => {
   const user_id = req.params.user_id;
   const updates = req.body.updates;
+
   db.User.findById(user_id)
   .then(foundUser => {
     return foundUser.updateAttributes(updates)
@@ -65,6 +66,8 @@ router.patch('/:user_id', (req, res) => {
     err
   }))
 });
+
+
 
 // DELETE request to delete a single User
 
@@ -86,5 +89,3 @@ router.delete('/:user_id', (req, res) => {
  
 
 module.exports = router;
-
-

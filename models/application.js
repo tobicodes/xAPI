@@ -11,9 +11,7 @@ module.exports = function(sequelize, DataTypes) {
     },
     name: {
       type: Sequelize.STRING,
-      validate: {
-        isAlpha: true
-      }
+      allowNull: false
     },
     description: Sequelize.STRING
   });
